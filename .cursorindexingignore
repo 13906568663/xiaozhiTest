@@ -1,0 +1,52 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node / pnpm
+node_modules/
+.pnpm-store/
+.next/
+.turbo/
+web/.next/
+web/out/
+web/node_modules/
+
+# Build / dist
+dist/
+build/
+*.egg-info/
+.eggs/
+
+# Lock 文件（体积大，没必要进 AI 索引）
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+uv.lock
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# 日志 / 覆盖率
+*.log
+coverage/
+htmlcov/
+.coverage
+test-results/
+playwright-report/
+blob-report/
+
+# 数据库 / 二进制
+*.sqlite
+*.db
+*.so
+
+# Alembic 编译产物
+alembic/versions/*.pyc

@@ -1,0 +1,52 @@
+[project]
+name = "agent-flow"
+version = "0.1.0"
+description = "Task scheduler agent platform built with FastAPI, PostgreSQL, Next.js, and React Flow."
+authors = [
+    { name = "蔡武", email = "2252711582@qq.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiosqlite>=0.21.0",
+    "alembic>=1.18.4",
+    "httpx>=0.27.0",
+    "mcp>=1.10.0",
+    "fastapi>=0.135.1",
+    "greenlet>=3.2.4",
+    "psycopg[binary]>=3.3.3",
+    "pydantic-settings>=2.13.1",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+    "python-dotenv>=1.2.2",
+    "sqlalchemy>=2.0.48",
+    "uvicorn[standard]>=0.42.0",
+    "basedpyright>=1.38.4",
+    "pgvector>=0.4.0",
+    "tiktoken>=0.9.0",
+    "python-multipart>=0.0.20",
+    "pdfplumber>=0.11.0",
+    "python-docx>=1.1.0",
+    "openpyxl>=3.1.0",
+    "beautifulsoup4>=4.12.0",
+    "pillow>=12.1.1",
+    "websockets>=16.0",
+]
+
+[project.scripts]
+api = "app.main:run"
+
+mock-mcp = "app.mock_mcp:run"
+mock-http-mcp = "app.mock_mcp:run"
+
+[build-system]
+requires = ["uv_build>=0.8.0,<0.9"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "app"
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: tests that exercise subprocesses or other external dependencies",
+]

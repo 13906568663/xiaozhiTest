@@ -1,0 +1,184 @@
+@import 'tailwindcss';
+
+/* Design tokens */
+:root {
+  /* --- Primary --- */
+  --el-primary: #409eff;
+  --el-primary-hover: #66b1ff;
+  --el-primary-active: #3a8ee6;
+  --el-primary-light-9: #ecf5ff;
+
+  /* --- Semantic --- */
+  --el-success: #67c23a;
+  --el-success-hover: #85ce61;
+  --el-success-light-9: #f0f9eb;
+  --el-warning: #e6a23c;
+  --el-warning-hover: #ebb563;
+  --el-warning-light-9: #fdf6ec;
+  --el-danger: #f56c6c;
+  --el-danger-hover: #f78989;
+  --el-danger-light-9: #fef0f0;
+  --el-info: #909399;
+  --el-info-light-9: #f4f4f5;
+
+  /* --- Text --- */
+  --el-text-primary: #303133;
+  --el-text-regular: #606266;
+  --el-text-secondary: #909399;
+  --el-text-placeholder: #c0c4cc;
+
+  /* --- Border --- */
+  --el-border-base: #dcdfe6;
+  --el-border-light: #e4e7ed;
+  --el-border-lighter: #ebeef5;
+
+  /* --- Fill / Background --- */
+  --el-fill-blank: #ffffff;
+  --el-bg-page: #f5f7fa;
+  --el-bg-overlay: rgba(0, 0, 0, 0.5);
+  --el-color-info-bg: #ecf5ff;
+
+  /* --- Layout --- */
+  --admin-topbar-h: 56px;
+  --admin-sidebar-w: 260px;
+  --admin-logo-box: 28px;
+  --admin-logo-radius: 6px;
+
+  /* --- Typography --- */
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+}
+
+@theme inline {
+  --color-el-primary: var(--el-primary);
+  --color-el-primary-light: var(--el-primary-light-9);
+  --color-el-success: var(--el-success);
+  --color-el-success-light: var(--el-success-light-9);
+  --color-el-warning: var(--el-warning);
+  --color-el-warning-light: var(--el-warning-light-9);
+  --color-el-danger: var(--el-danger);
+  --color-el-danger-light: var(--el-danger-light-9);
+  --color-el-info: var(--el-info);
+  --color-el-info-light: var(--el-info-light-9);
+  --color-el-text-primary: var(--el-text-primary);
+  --color-el-text-regular: var(--el-text-regular);
+  --color-el-text-secondary: var(--el-text-secondary);
+  --color-el-text-placeholder: var(--el-text-placeholder);
+  --color-el-border-base: var(--el-border-base);
+  --color-el-border-light: var(--el-border-light);
+  --color-el-border-lighter: var(--el-border-lighter);
+  --color-el-fill-blank: var(--el-fill-blank);
+  --color-el-bg-page: var(--el-bg-page);
+  --color-el-info-bg: var(--el-color-info-bg);
+  --font-sans: var(--font-sans);
+  --spacing-admin-topbar: var(--admin-topbar-h);
+  --spacing-admin-sidebar: var(--admin-sidebar-w);
+  --animate-collapsible-down: collapsible-down 0.2s ease-out;
+  --animate-collapsible-up: collapsible-up 0.15s ease-in;
+
+  /* Inverted slate scale for light-bg chat UI (matches web project) */
+  --color-slate-50: #1f2a44;
+  --color-slate-100: #1f2a44;
+  --color-slate-200: #334155;
+  --color-slate-300: #475569;
+  --color-slate-400: #64748b;
+  --color-slate-500: #7c8aa5;
+  --color-slate-600: #94a3b8;
+  --color-slate-700: #cbd5e1;
+  --color-slate-800: #eef4ff;
+  --color-slate-900: #f5f7fb;
+  --color-slate-950: #ffffff;
+
+  /* Accent color overrides used by chat components */
+  --color-amber-300: #ffb547;
+  --color-rose-100: #b84b4b;
+  --color-rose-300: #f56c6c;
+  --color-rose-400: #f56c6c;
+  --color-rose-500: #f56c6c;
+}
+
+@keyframes collapsible-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-collapsible-content-height);
+  }
+}
+
+@keyframes collapsible-up {
+  from {
+    height: var(--radix-collapsible-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+  body {
+    @apply bg-el-fill-blank text-el-text-primary antialiased;
+  }
+}
+
+/* Subtle scrollbar — used by chat components */
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: #d7e0ee transparent;
+}
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 999px;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: #d7e0ee;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+}
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: #c1cde0;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.scrollbar-subtle::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Fully hidden scrollbar — used for horizontal pill rows that scroll on overflow */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* Thin scrollbar — matches Radix ScrollArea look */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--el-border-light) transparent;
+}
+.thin-scrollbar:hover {
+  scrollbar-color: var(--el-border-base) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--el-border-light);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--el-border-base);
+}

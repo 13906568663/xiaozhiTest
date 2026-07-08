@@ -1,0 +1,71 @@
+# --- Environment & secrets ---
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# --- Local scratch / one-shot debug ---
+.tmp/
+
+# --- Runtime 导出文件目录（exports_dir，运行时生成，不纳入版本库） ---
+output/
+
+# --- Docs (本地维护，不纳入版本库) ---
+doc/
+
+# --- Python ---
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+dist/
+*.egg-info/
+.eggs/
+build/
+!/build/
+
+# --- Node / pnpm (workspace root + packages) ---
+node_modules/
+.pnpm-store/
+.pnpm-debug.log*
+
+# --- Next.js (web app) ---
+web/.next/
+web/out/
+web/node_modules/
+
+# --- Build / caches ---
+*.tsbuildinfo
+.turbo/
+.next/
+
+# --- Logs ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- OS & editors ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Tests & e2e ---
+coverage/
+test-results/
+playwright-report/
+blob-report/
+
+# --- Alembic ---
+alembic/versions/*.pyc

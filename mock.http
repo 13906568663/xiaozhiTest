@@ -1,0 +1,96 @@
+@baseUrl = http://127.0.0.1:8000/api/v1
+@mockMcpUrl = http://127.0.0.1:18080/mcp
+@accessToken = replace-me
+
+# 先启动：bash scripts/mock_mcp.sh
+
+### Login
+# @name login
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "platform_admin",
+  "password": "TaskFlow2026!Console"
+}
+
+### Create Mock Prepare Data MCP Capability
+POST {{baseUrl}}/capabilities
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "type": "mcp",
+  "code": "mock_prepare_data",
+  "name": "Mock Prepare Data MCP",
+  "status": "active",
+  "description": "Local mock MCP for notice/get-data workflow demos.",
+  "config_json": {
+    "client_type": "http_stateless",
+    "transport": "streamable_http",
+    "url": "{{mockMcpUrl}}",
+    "timeout_seconds": 60
+  }
+}
+
+### MCP · Initialize
+POST {{mockMcpUrl}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "initialize",
+  "params": {
+    "protocolVersion": "2024-11-05",
+    "capabilities": {},
+    "clientInfo": { "name": "mock-mcp-test", "version": "0.1.0" }
+  }
+}
+
+### MCP · tools/list（应返回 notice_prepare_data 和 get_data）
+POST {{mockMcpUrl}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/list",
+  "params": {}
+}
+
+### MCP · tools/call notice_prepare_data
+POST {{mockMcpUrl}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": 3,
+  "method": "tools/call",
+  "params": {
+    "name": "notice_prepare_data",
+    "arguments": {
+      "id": "flow-demo-001"
+    }
+  }
+}
+
+### MCP · tools/call get_data
+POST {{mockMcpUrl}}
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": 4,
+  "method": "tools/call",
+  "params": {
+    "name": "get_data",
+    "arguments": {
+      "data_type": "demo_preflight"
+    }
+  }
+}

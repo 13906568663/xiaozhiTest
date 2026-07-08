@@ -1,0 +1,72 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/pyright/main/packages/pyright-internal/schemas/pyrightconfig.schema.json",
+
+  "include": ["app", "tests", "alembic", "demo"],
+  "exclude": ["**/__pycache__", "**/.venv", ".venv", "**/site-packages", "**/node_modules", "web"],
+
+  "pythonVersion": "3.12",
+  "pythonPlatform": "All",
+
+  "venvPath": ".",
+  "venv": ".venv",
+
+  "typeCheckingMode": "standard",
+
+  "useLibraryCodeForTypes": true,
+
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "warning",
+  "reportMissingTypeStubs": "none",
+
+  "reportUnusedImport": "warning",
+  "reportUnusedClass": "warning",
+  "reportUnusedFunction": "warning",
+  "reportUnusedVariable": "warning",
+
+  "reportPrivateUsage": "none",
+  "reportPrivateImportUsage": "none",
+
+  "reportOptionalMemberAccess": "warning",
+  "reportOptionalSubscript": "warning",
+  "reportOptionalOperand": "warning",
+  "reportOptionalIterable": "warning",
+  "reportOptionalContextManager": "warning",
+
+  "reportArgumentType": "warning",
+  "reportReturnType": "warning",
+  "reportAssignmentType": "warning",
+  "reportCallIssue": "warning",
+  "reportAttributeAccessIssue": "warning",
+  "reportGeneralTypeIssues": "warning",
+
+  "reportIncompatibleMethodOverride": "warning",
+  "reportIncompatibleVariableOverride": "warning",
+
+  "reportUnknownParameterType": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownLambdaType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnknownMemberType": "none",
+
+  "reportUnnecessaryIsInstance": "warning",
+  "reportUnnecessaryComparison": "warning",
+  "reportUnnecessaryContains": "warning",
+
+  "reportImplicitStringConcatenation": "none",
+  "reportInvalidStringEscapeSequence": "warning",
+  "reportAssertAlwaysTrue": "warning",
+
+  "reportSelfClsParameterName": "warning",
+  "reportImplicitOverride": "none",
+
+  "reportUnusedCallResult": "none",
+  "reportUnusedCoroutine": "error",
+
+  "reportDuplicateImport": "warning",
+  "reportWildcardImportFromLibrary": "warning",
+
+  "reportConstantRedefinition": "warning",
+  "reportDeprecated": "warning",
+
+  "reportMatchNotExhaustive": "none"
+}
