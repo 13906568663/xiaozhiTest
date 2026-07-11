@@ -62,6 +62,9 @@ class PermissionCode:
     MEMORY_READ = "memory:read"
     MEMORY_WRITE = "memory:write"
 
+    TOOLSETS_READ = "toolsets:read"
+    TOOLSETS_WRITE = "toolsets:write"
+
     SKILLS_READ = "skills:read"
     SKILLS_WRITE = "skills:write"
 
@@ -212,6 +215,18 @@ DEFAULT_PERMISSION_DEFINITIONS: tuple[PermissionDefinition, ...] = (
         description="Delete or clear user memories.",
     ),
     PermissionDefinition(
+        code=PermissionCode.TOOLSETS_READ,
+        resource="toolsets",
+        action="read",
+        description="View dynamic HTTP tool definitions.",
+    ),
+    PermissionDefinition(
+        code=PermissionCode.TOOLSETS_WRITE,
+        resource="toolsets",
+        action="write",
+        description="Create, update, and delete dynamic HTTP tools.",
+    ),
+    PermissionDefinition(
         code=PermissionCode.SKILLS_READ,
         resource="skills",
         action="read",
@@ -268,6 +283,8 @@ DEFAULT_ROLE_PERMISSION_CODES: dict[str, tuple[str, ...]] = {
         PermissionCode.CHATBOTS_WRITE,
         PermissionCode.MEMORY_READ,
         PermissionCode.MEMORY_WRITE,
+        PermissionCode.TOOLSETS_READ,
+        PermissionCode.TOOLSETS_WRITE,
         PermissionCode.SKILLS_READ,
         PermissionCode.SKILLS_WRITE,
     ),
@@ -278,6 +295,7 @@ DEFAULT_ROLE_PERMISSION_CODES: dict[str, tuple[str, ...]] = {
         PermissionCode.KNOWLEDGE_READ,
         PermissionCode.CHATBOTS_READ,
         PermissionCode.MEMORY_READ,
+        PermissionCode.TOOLSETS_READ,
         PermissionCode.SKILLS_READ,
     ),
 }

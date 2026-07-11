@@ -34,6 +34,11 @@ export const defaultAdminNavSections: NavSection[] = [
         label: "MCP 工具",
         icon: MENU_ICON_BY_NAME.PlugZap,
       },
+      {
+        href: "/capabilities/toolsets",
+        label: "动态工具集",
+        icon: MENU_ICON_BY_NAME.Package,
+      },
     ],
   },
   {

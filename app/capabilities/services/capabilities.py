@@ -133,6 +133,19 @@ class CapabilityService:
                 normalized["timeout_seconds"] = timeout_value
             return normalized
 
+        if capability_type == CapabilityType.VIRTUAL_MCP:
+            mounted_tools = normalized.get("mounted_tools")
+            if mounted_tools is not None and not isinstance(mounted_tools, list):
+                raise ValueError(
+                    "Virtual MCP config_json.mounted_tools must be an array."
+                )
+            headers = normalized.get("headers")
+            if headers is not None and not isinstance(headers, dict):
+                raise ValueError(
+                    "Virtual MCP config_json.headers must be an object."
+                )
+            return normalized
+
         if capability_type != CapabilityType.FUNCTION:
             return normalized
 

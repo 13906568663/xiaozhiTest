@@ -1,11 +1,15 @@
-# 小智常驻部署：仅 API + 本地 pgvector 数据库（不含 web / nginx）。
-# 目标：让小智 MCP 连接器在服务器上 7x24 常驻，笔记本关机也不掉线。
+# agent-flow 常驻部署：API + pgvector + Web 管理台。
+# MCP 入口由本平台提供（HTTP：/xiaozhi/mcp；出站连官方/自建小智接入点时再开 XIAOZHI_MCP_*）。
 #
 # 在仓库根目录执行（--project-directory . 让 context / env_file 相对根目录解析）：
 #   docker compose -f deploy/docker-compose.xiaozhi.yml --project-directory . up -d --build
 #
 # 构建参数默认按"海外服务器直连官方源"优化；国内机可改用阿里云镜像：
 #   UV_INDEX=https://mirrors.aliyun.com/pypi/simple/ APT_MIRROR_CN=true docker compose ... up -d --build
+#
+# Web 构建期变量（写进 .env 或导出后再 up）：
+#   NEXT_PUBLIC_API_BASE_URL=http://<公网IP>:8000/api/v1
+#   NEXT_PUBLIC_BASE_PATH=          # 与后端 BASE_PATH 一致；空表示无前缀
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -38,6 +42,22 @@ services:
     depends_on:
       db:
         condition: service_healthy
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api/v1}
+        NEXT_PUBLIC_BASE_PATH: ${NEXT_PUBLIC_BASE_PATH:-}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-http://127.0.0.1:8000/api/v1}
+      INTERNAL_API_BASE_URL: ${INTERNAL_API_BASE_URL:-http://api:8000/api/v1}
+    ports:
+      - "8080:3000"
+    depends_on:
+      - api
 
 volumes:
   agent_flow_pgdata:

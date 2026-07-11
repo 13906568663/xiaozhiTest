@@ -5,15 +5,13 @@
   merged_config = {**registry_config, **node_binding_config}
 即节点绑定中的配置项优先级高于注册表中的默认配置。
 
-functions：ref 优先匹配能力注册表 type=function 的 code；若无匹配且 ref 为
-``external_agent`` 表主键，则按该外部智能体的 endpoint 合成 HTTP 工具配置。
+functions：ref 匹配能力注册表 type=function 的 code。
 
 BindingSource.NODE 的绑定跳过解析，其 config 已是完整配置，不需要查库。
 """
 
 from __future__ import annotations
 
-from typing import Any
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -47,11 +45,11 @@ class CapabilityResolverService:
             else None
         )
         resolved_mcps = [
-            await self._resolve_mcp_binding(session, binding)
+            await self._resolve_mcp_or_virtual_binding(session, binding)
             for binding in node.mcps
         ]
         resolved_functions = [
-            await self._resolve_function_or_external_agent(session, binding)
+            await self._resolve_function_binding(session, binding)
             for binding in node.functions
         ]
         resolved_compensation = await self.resolve_compensation_rule(
@@ -144,22 +142,34 @@ class CapabilityResolverService:
         )
         return (base_prompt or "") + block
 
-    async def _resolve_mcp_binding(
+    async def _resolve_mcp_or_virtual_binding(
         self,
         session: AsyncSession,
         binding: CapabilityBinding,
     ) -> CapabilityBinding:
-        """解析 MCP 绑定：按 MCP 类型从能力注册表读取配置。"""
+        """解析 MCP 绑定：优先普通 MCP，找不到时回退动态工具集。"""
         if binding.ref is None or binding.source != BindingSource.GLOBAL:
             return binding
 
-        resolved = await self.resolve_binding(session, binding, CapabilityType.MCP)
-        if resolved is not None and resolved.config:
-            return resolved
+        if await self._get_capability(session, CapabilityType.MCP, binding.ref):
+            return (
+                await self.resolve_binding(session, binding, CapabilityType.MCP)
+                or binding
+            )
+
+        if await self._get_capability(
+            session, CapabilityType.VIRTUAL_MCP, binding.ref
+        ):
+            return (
+                await self.resolve_binding(
+                    session, binding, CapabilityType.VIRTUAL_MCP
+                )
+                or binding
+            )
 
         return binding
 
-    async def _resolve_function_or_external_agent(
+    async def _resolve_function_binding(
         self,
         session: AsyncSession,
         binding: CapabilityBinding,

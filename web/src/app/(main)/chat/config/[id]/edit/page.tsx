@@ -134,7 +134,7 @@ export default function ChatbotEditPage() {
       if (capsRes.status === "fulfilled" && Array.isArray(capsRes.value.data)) {
         const caps = capsRes.value.data;
         setModels(caps.filter((c) => c.type === "model"));
-        setMcps(caps.filter((c) => c.type === "mcp"));
+        setMcps(caps.filter((c) => c.type === "mcp" || c.type === "virtual_mcp"));
         setFunctions(caps.filter((c) => c.type === "function"));
       }
       if (kbRes.status === "fulfilled" && Array.isArray(kbRes.value.data)) {

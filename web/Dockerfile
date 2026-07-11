@@ -45,7 +45,8 @@ RUN groupadd --system --gid 1001 nodejs && \
 # Next.js standalone 已经把所需的最小 node_modules 内联到 standalone 目录里
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
-# standalone 输出不会自动包含 public/，必须手动拷贝。
+# standalone 输出不会自动包含 public/；目录可能为空，构建期先占位再拷贝。
+RUN mkdir -p ./public
 COPY --from=builder --chown=nextjs:nodejs /app/public            ./public
 
 USER nextjs

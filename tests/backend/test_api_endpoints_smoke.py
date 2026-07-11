@@ -536,5 +536,62 @@ def test_chat_session_can_rename_and_delete(
     assert list_after_delete_response.json() == []
 
 
+def test_dynamic_tool_crud_flow(api_env: dict[str, object]) -> None:
+    client = _client(api_env)
+    headers = _login_headers(client)
+
+    permissions_response = client.get("/api/v1/permissions", headers=headers)
+    assert permissions_response.status_code == 200
+    permission_codes = {
+        item["code"] for item in permissions_response.json()
+    }
+    assert {"toolsets:read", "toolsets:write"} <= permission_codes
+
+    create_response = client.post(
+        "/api/v1/toolsets",
+        headers=headers,
+        json={
+            "name": "inventory_lookup",
+            "description": "查询库存",
+            "method": "POST",
+            "url": "https://example.test/inventory",
+            "headers": {"X-Tenant": "demo"},
+            "parameters_schema": {
+                "type": "object",
+                "properties": {"sku": {"type": "string"}},
+                "required": ["sku"],
+            },
+            "status": "active",
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert created["created_by"] == "ops-admin"
+    tool_id = created["id"]
+
+    list_response = client.get(
+        "/api/v1/toolsets?name=inventory",
+        headers=headers,
+    )
+    assert list_response.status_code == 200
+    assert list_response.json()["total"] == 1
+
+    update_response = client.put(
+        f"/api/v1/toolsets/{tool_id}",
+        headers=headers,
+        json={"description": "查询实时库存", "status": "inactive"},
+    )
+    assert update_response.status_code == 200
+    assert update_response.json()["description"] == "查询实时库存"
+    assert update_response.json()["status"] == "inactive"
+
+    delete_response = client.delete(
+        f"/api/v1/toolsets/{tool_id}",
+        headers=headers,
+    )
+    assert delete_response.status_code == 200
+    assert delete_response.json() == {"deleted": True, "tool_id": tool_id}
+
+
 
 

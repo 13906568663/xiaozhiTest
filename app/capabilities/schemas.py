@@ -24,7 +24,12 @@ class CapabilityBase(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-    type: CapabilityType = Field(description="能力类型：MODEL 模型服务 / MCP 工具协议 / FUNCTION HTTP 函数")
+    type: CapabilityType = Field(
+        description=(
+            "能力类型：MODEL 模型服务 / MCP 工具协议 / "
+            "VIRTUAL_MCP 动态工具集 / FUNCTION HTTP 函数"
+        )
+    )
     code: str = Field(description="能力唯一编码，节点通过此 code 引用能力（如 'gpt-4o'、'approval-mcp'）")
     name: str = Field(description="能力显示名称，用于 UI 展示")
     description: str | None = Field(default=None, description="能力用途说明，FUNCTION 类型时会作为 Agent 工具描述")

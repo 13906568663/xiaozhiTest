@@ -1,7 +1,7 @@
 """Capabilities 域 ORM 模型。
 
-CapabilityRegistry 是平台统一的能力注册表，
-支持三类能力：MODEL（LLM 模型配置）、MCP（MCP 协议工具）、FUNCTION（HTTP 函数）。
+CapabilityRegistry 是平台统一的能力注册表，支持 MODEL（LLM 模型配置）、
+MCP（MCP 协议工具）、VIRTUAL_MCP（动态 HTTP 工具集）和 FUNCTION（HTTP 函数）。
 节点通过 code 引用能力，运行时动态解析为具体配置。
 """
 
@@ -15,7 +15,7 @@ from app.domain.enums import CapabilityType
 
 
 class CapabilityRegistry(UUIDPrimaryKeyMixin, TimestampMixin, Base):
-    """平台能力注册表，统一管理模型、MCP 工具和 HTTP 函数的连接配置。
+    """平台能力注册表，统一管理模型、MCP、动态工具集和 HTTP 函数配置。
 
     config_json 的结构因 type 不同而异，服务层在写入前执行类型特定的校验与归一化。
     validate_strings=True 确保从数据库读取到的字符串枚举值通过校验，防止脏数据进入应用层。

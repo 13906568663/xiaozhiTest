@@ -19,6 +19,7 @@ from app.iam.routes import auth, permissions, profile, roles, users
 from app.knowledge.routes import knowledge_bases
 from app.memory.routes import memories as memory_routes
 from app.skill.routes import skills as skills_routes
+from app.toolset.routes import toolsets
 
 
 api_router = APIRouter()
@@ -66,6 +67,12 @@ api_router.include_router(
     memory_routes.router,
     prefix="/memories",
     tags=["memories"],
+    dependencies=[Depends(require_current_user)],
+)
+api_router.include_router(
+    toolsets.router,
+    prefix="/toolsets",
+    tags=["toolsets"],
     dependencies=[Depends(require_current_user)],
 )
 api_router.include_router(

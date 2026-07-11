@@ -6,6 +6,7 @@ ORM 模型包 — 按业务域拆分：
   - knowledge.py  : 知识库、文档、分块向量
   - memory.py     : 用户记忆存储
   - skill.py      : 技能（SKILL.md 文档）
+  - toolset.py    : 动态工具集
   - workflow.py   : 节点运行记录与 artifact（对话引擎底座）
 
 从外部统一通过 `from app.db.models import Xxx` 引用。
@@ -35,6 +36,7 @@ from app.db.models.knowledge import (
 )
 from app.db.models.memory import MemoryStore
 from app.db.models.skill import Skill
+from app.db.models.toolset import DynamicTool
 from app.db.models.workflow import (
     NodeRun,
     NodeRunArtifact,
@@ -49,6 +51,7 @@ __all__ = [
     "Chatbot",
     "ChatMessage",
     "ChatSession",
+    "DynamicTool",
     "KnowledgeBase",
     "KnowledgeChunk",
     "KnowledgeDocument",

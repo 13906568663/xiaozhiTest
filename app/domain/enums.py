@@ -24,6 +24,7 @@ class CapabilityType(str, Enum):
 
     MODEL = "model"
     MCP = "mcp"
+    VIRTUAL_MCP = "virtual_mcp"
     FUNCTION = "function"
 
 
