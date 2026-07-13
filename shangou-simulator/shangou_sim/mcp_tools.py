@@ -9,6 +9,7 @@ import json
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import Field
 
 from .store import OpError, Store
@@ -34,6 +35,8 @@ def build_mcp(store: Store) -> FastMCP:
         name="shangou-dispatch-sim",
         instructions=INSTRUCTIONS,
         stateless_http=True,
+        # 内网演示服务,允许通过容器名/内网 IP 访问(否则非 localhost 的 Host 会被 421 拒绝)
+        transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
     )
 
     # ── 查询类 ──────────────────────────────────────────
