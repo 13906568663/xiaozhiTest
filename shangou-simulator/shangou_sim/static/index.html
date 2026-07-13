@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>闪购 · 外卖派单中心(演示环境)</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-logo">闪购</div>
+      <div class="brand-text">
+        <div class="brand-title">外卖派单中心</div>
+        <div class="brand-sub">模拟演示环境 · 5 店铺 / 1 骑手 / 3 买家</div>
+      </div>
+    </div>
+    <div class="clockbox">
+      <div class="sim-clock" id="simClock">--:--:--</div>
+      <div class="scale-group" id="scaleGroup">
+        <button data-scale="0">⏸ 冻结</button>
+        <button data-scale="1">1x</button>
+        <button data-scale="5">5x</button>
+        <button data-scale="10">10x</button>
+      </div>
+    </div>
+    <div class="statchips" id="statChips"></div>
+  </header>
+
+  <div class="toolbar">
+    <button class="btn btn-primary" id="btnPreset">⚡ 一键生成演示场景(跨店 + 充电宝 + 出餐)</button>
+    <button class="btn" id="btnRandom">+ 随机订单</button>
+    <label class="autogen">
+      <input type="checkbox" id="autogenSwitch" /> 自动派单
+      <input type="number" id="autogenInterval" value="40" min="5" max="600" /> 秒/单
+    </label>
+    <div class="spacer"></div>
+    <button class="btn btn-ghost" id="btnReset">重置数据</button>
+  </div>
+
+  <main class="layout">
+    <section class="col col-orders">
+      <div class="col-title">订单流水 <span class="muted" id="orderCount"></span></div>
+      <div id="orderList"></div>
+    </section>
+
+    <section class="col col-map">
+      <div class="col-title">配送地图(5km × 5km)</div>
+      <div class="card">
+        <canvas id="map" width="460" height="460"></canvas>
+        <div class="legend">
+          <span><i class="dot dot-shop"></i>店铺</span>
+          <span><i class="dot dot-pb"></i>充电宝柜</span>
+          <span><i class="dot dot-buyer"></i>买家</span>
+          <span><i class="dot dot-rider"></i>骑手</span>
+        </div>
+      </div>
+      <div class="card rider-card" id="riderCard"></div>
+    </section>
+
+    <section class="col col-events">
+      <div class="col-title">实时事件流 <span class="muted">(AI 的每个动作都会出现在这里)</span></div>
+      <div class="card events" id="eventList"></div>
+    </section>
+  </main>
+
+  <div class="toast" id="toast"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

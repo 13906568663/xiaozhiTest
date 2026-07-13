@@ -1,0 +1,10 @@
+[project]
+name = "shangou-simulator"
+version = "0.1.0"
+description = "闪购外卖派单模拟系统(独立演示项目):管理后台 + MCP 工具,供 AI 骑手助手做接单/路线决策"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
+    "mcp>=1.9",
+]
