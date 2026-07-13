@@ -21,6 +21,7 @@ INSTRUCTIONS = (
     "订单可能包含多个取货点(跨店单),每个取货点有备货就绪倒计时 ready_in_minutes:"
     "0 表示已备好(如充电宝柜机即到即取),大于 0 表示商家还在备货、骑手早到会干等。"
     "所有 travel_*_minutes 字段是骑行时间(分钟)。"
+    "待接单订单的备货与送达倒计时从接单时刻才开始计算,待接单状态不会超时。"
     "规划路线时应结合:各取货点的备货倒计时、点位之间的骑行时间、各订单的送达时限,"
     "尽量避免到店干等,并保证不超时。"
 )
@@ -60,7 +61,7 @@ def build_mcp(store: Store) -> FastMCP:
                 "rider_location": store.rider["location"],
                 "order_count": len(views),
                 "orders": views,
-                "hint": "ready_in_minutes=0 表示商品已备好可直接取;早到未备好会干等。",
+                "hint": "ready_in_minutes=0 表示商品已备好可直接取;早到未备好会干等。待接单订单的倒计时从接单时刻才开始算,不会超时。",
             }
         )
 

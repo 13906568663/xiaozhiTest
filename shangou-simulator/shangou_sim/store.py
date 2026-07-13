@@ -88,6 +88,7 @@ class Order:
     delivery_fee: float
     created_at: datetime
     deadline: datetime
+    window_minutes: float = 30.0  # 送达时限总长;待接单时不走表,接单后才开始倒计时
     status: str = PENDING
     accepted_at: datetime | None = None
     delivered_at: datetime | None = None
@@ -206,6 +207,7 @@ class Store:
             delivery_fee=fee,
             created_at=now,
             deadline=now + timedelta(minutes=deadline_minutes),
+            window_minutes=float(deadline_minutes),
         )
         self.orders[order.id] = order
         shop_names = "、".join(self.shops[p.shop_id].name for p in pickups)
@@ -278,7 +280,13 @@ class Store:
         if order.status != PENDING:
             raise OpError(f"订单 {order.id} 当前是「{ORDER_STATUS_LABEL[order.status]}」,不能重复接单")
         order.status = ACCEPTED
-        order.accepted_at = self.now()
+        now = self.now()
+        order.accepted_at = now
+        # 时限从接单时刻起算:待接单期间订单不会变旧,接单后重置备货与送达倒计时
+        order.created_at = now
+        order.deadline = now + timedelta(minutes=order.window_minutes)
+        for pickup in order.pickups:
+            pickup.ready_at = now + timedelta(minutes=pickup.prep_minutes)
         self.log(actor, f"接单 {order.id}")
         return f"已接单 {order.id},开始取货。" + self._pickup_brief(order)
 
@@ -402,11 +410,13 @@ class Store:
 
     def order_view(self, order: Order) -> dict[str, Any]:
         buyer = self.buyers[order.buyer_id]
-        deadline_left = round(self.clock.minutes_until(order.deadline), 1)
+        pending = order.status == PENDING
+        # 待接单的订单永远保持"刚派单"状态:倒计时不走表,接单后才开始计时
+        deadline_left = round(order.window_minutes if pending else self.clock.minutes_until(order.deadline), 1)
         pickups = []
         for p in order.pickups:
             shop = self.shops[p.shop_id]
-            ready_in = round(self.clock.minutes_until(p.ready_at), 1)
+            ready_in = p.prep_minutes if pending else round(self.clock.minutes_until(p.ready_at), 1)
             pickups.append(
                 {
                     "shop_id": shop.id,
@@ -432,9 +442,9 @@ class Store:
             "buyer": {"id": buyer.id, "name": buyer.name, "address": buyer.address, "x": buyer.x, "y": buyer.y},
             "delivery_fee": order.delivery_fee,
             "created_at": order.created_at.strftime("%H:%M:%S"),
-            "deadline": order.deadline.strftime("%H:%M:%S"),
+            "deadline": "接单后计时" if pending else order.deadline.strftime("%H:%M:%S"),
             "deadline_left_minutes": deadline_left,
-            "overdue": order.status not in (DELIVERED, REJECTED) and deadline_left < 0,
+            "overdue": order.status in (ACCEPTED, DELIVERING) and deadline_left < 0,
             "late": order.late,
             "travel_to_buyer_from_rider_minutes": self.rider_travel_minutes_to(buyer.x, buyer.y),
             "pickups": pickups,
