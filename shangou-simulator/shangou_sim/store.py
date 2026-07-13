@@ -142,12 +142,12 @@ class Store:
         self.orders: dict[str, Order] = {}
         self.events: list[dict[str, Any]] = []
         self._seq = 1000
-        self.rider = {"id": "rider_1", "name": "骑手小郑", "x": RIDER_HOME[0], "y": RIDER_HOME[1], "location": "配送站"}
+        self.rider = {"id": "rider_1", "name": "Jack", "x": RIDER_HOME[0], "y": RIDER_HOME[1], "location": "配送站"}
         self.autogen_enabled = False
         self.autogen_interval = 40.0  # 现实秒
         self._autogen_last = time.time()
         self.clock.set_scale(self.clock.scale)
-        self.log("系统", "数据已重置,骑手小郑在配送站待命")
+        self.log("系统", "数据已重置,骑手 Jack 在配送站待命")
 
     def now(self) -> datetime:
         return self.clock.now()
