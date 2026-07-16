@@ -14,6 +14,7 @@ from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -48,6 +49,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="闪购外卖派单模拟系统", lifespan=lifespan)
+# 轨迹监控页(另一端口)跨源拉订单状态叠加到地图,演示环境直接放开
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 app.include_router(build_router(store), prefix="/api")
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
