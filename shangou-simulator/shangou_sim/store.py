@@ -4,8 +4,9 @@
 - 订单 = N 个取货任务 + 1 个送达点。跨店单就是 2 个取货任务;
 - 每个取货任务有 ready_at(备货就绪时刻)。充电宝柜 prep=0 到店即取,
   餐饮单 prep 8~15 分钟,骑手早到会"干等",等待时长会被记录并计入统计;
-- 所有店铺/买家有平面坐标(5km x 5km 虚拟地图),行程时间 = 距离 / 骑行速度,
-  供 AI 做路线规划。
+- 店铺/买家均为深圳宝安西乡·前进二路一带的真实地点(百度 BD09 经纬度),
+  内部平面坐标由经纬度局部投影得到(米),行程时间 = 距离 / 骑行速度;
+  真实转弯级路线规划由车辆轨迹服务的 plan_route(百度骑行)承担。
 """
 
 from __future__ import annotations
@@ -56,6 +57,9 @@ class Shop:
     y: float
     prep_min: int  # 备货时长下限(分钟)
     prep_max: int
+    address: str = ""
+    lng: float = 0.0  # 百度 BD09
+    lat: float = 0.0
 
 
 @dataclass
@@ -65,6 +69,8 @@ class Buyer:
     address: str
     x: float
     y: float
+    lng: float = 0.0  # 百度 BD09
+    lat: float = 0.0
 
 
 @dataclass
@@ -97,26 +103,57 @@ class Order:
     late: bool = False
 
 
+# 局部平面投影原点(区域西南角,BD09):所有真实点位投影到 0~5000m 平面,
+# 前端画布与距离计算沿用米制坐标,无需感知经纬度。
+_ORIGIN_LNG, _ORIGIN_LAT = 113.8650, 22.5800
+
+
+def _bd09_to_xy(lng: float, lat: float) -> tuple[float, float]:
+    x = (lng - _ORIGIN_LNG) * 111320.0 * math.cos(math.radians(lat))
+    y = (lat - _ORIGIN_LAT) * 110540.0
+    return round(x, 1), round(y, 1)
+
+
+def _mk_shop(id_: str, name: str, category: str, lng: float, lat: float,
+             address: str, prep_min: int, prep_max: int) -> Shop:
+    x, y = _bd09_to_xy(lng, lat)
+    return Shop(id_, name, category, x, y, prep_min, prep_max,
+                address=address, lng=lng, lat=lat)
+
+
+def _mk_buyer(id_: str, name: str, address: str, lng: float, lat: float) -> Buyer:
+    x, y = _bd09_to_xy(lng, lat)
+    return Buyer(id_, name, address, x, y, lng=lng, lat=lat)
+
+
+# 真实店铺(深圳宝安西乡,坐标来自百度地点检索,店名可被 plan_route 直接搜到)
 SHOPS: list[Shop] = [
-    Shop("shop_mlt", "蜀香麻辣烫", "餐饮", 1200, 1500, 8, 15),
-    Shop("shop_slf", "金牌烧腊饭店", "餐饮", 3800, 1200, 8, 14),
-    Shop("shop_fruit", "每日鲜果店", "生鲜", 1800, 3600, 3, 6),
-    Shop("shop_cvs", "7号便利店", "便利店", 2400, 3900, 2, 4),
-    Shop("shop_pb", "极速充电宝·3号柜", "充电宝", 3200, 2800, 0, 0),
+    _mk_shop("shop_mlt", "老湖南·乡村土菜(桃源居店)", "餐饮",
+             113.873831, 22.611429, "前进二路与文卫路交叉口西侧·西乡园艺园工业园27栋", 8, 15),
+    _mk_shop("shop_slf", "开封羊汤馆(流塘店)", "餐饮",
+             113.891873, 22.582550, "西乡流塘·榕树路二巷2号", 8, 14),
+    _mk_shop("shop_fruit", "BL面包店(畔山美地嘉园)", "烘焙",
+             113.874817, 22.612231, "前进二路畔山美地嘉园", 3, 6),
+    _mk_shop("shop_cvs", "美宜佳(前进二路店)", "便利店",
+             113.886068, 22.599271, "前进二路凤凰岗第二工业区F栋一楼", 2, 4),
+    _mk_shop("shop_pb", "街电充电宝·桃源居三区柜机", "充电宝",
+             113.869330, 22.619571, "桃源居三区北门柜机", 0, 0),
 ]
 
+# 真实小区/楼宇的固定顾客
 BUYERS: list[Buyer] = [
-    Buyer("buyer_zhang", "张女士", "阳光花园2栋1单元", 900, 2600),
-    Buyer("buyer_li", "李先生", "科技园B座前台", 4300, 3400),
-    Buyer("buyer_wang", "王同学", "大学城3号宿舍楼", 3000, 4600),
+    _mk_buyer("buyer_zhang", "张女士", "桃源居三区(前进二路与汇江一路口)", 113.869330, 22.619571),
+    _mk_buyer("buyer_li", "李先生", "畔山美地嘉园(前进路130号)", 113.875623, 22.612054),
+    _mk_buyer("buyer_wang", "王同学", "河西创新公寓(前进二路137号)", 113.873017, 22.612124),
 ]
 
-RIDER_HOME = (2500.0, 2500.0)  # 配送站
+# 配送站:前进二路中段(骑手车辆日常活动位置)
+RIDER_HOME = _bd09_to_xy(113.8730, 22.6110)
 
 SHOP_ITEMS: dict[str, list[str]] = {
-    "shop_mlt": ["微辣麻辣烫套餐", "全辣麻辣烫大份", "冰豆浆", "卤蛋x2"],
-    "shop_slf": ["叉烧双拼饭", "烧鸭例牌", "白切鸡饭", "老火例汤"],
-    "shop_fruit": ["果切拼盘", "进口香蕉2斤", "蓝莓1盒", "西瓜半个"],
+    "shop_mlt": ["剁椒鱼头饭", "小炒黄牛肉套餐", "农家小炒肉", "冬瓜排骨汤"],
+    "shop_slf": ["羊肉汤配烧饼", "羊杂汤", "孜然羊肉炒饭"],
+    "shop_fruit": ["现烤牛角包x2", "提子软欧包", "芝士蛋糕切件", "冰美式"],
     "shop_cvs": ["冰镇可乐x2", "抽纸3包", "5号电池1板", "关东煮套餐"],
     "shop_pb": ["共享充电宝x1(柜机自取)"],
 }
@@ -248,20 +285,20 @@ class Store:
         return self.create_order(specs, buyer.id, deadline, actor=actor)
 
     def create_preset_scenario(self, actor: str = "管理后台") -> list[Order]:
-        """客户电话里的验收场景:同一时刻三张单。
+        """客户电话里的验收场景:同一时刻三张单(全部真实地点)。
 
-        1. 跨店单:鲜果店 + 便利店 两处取货 → 王同学;
-        2. 充电宝单:柜机即取不等待 → 李先生;
-        3. 出餐单:麻辣烫 12 分钟出餐(早到要干等) → 张女士。
+        1. 跨店单:BL面包店 + 美宜佳 两处取货 → 王同学(河西创新公寓);
+        2. 充电宝单:桃源居三区柜机即取不等待 → 李先生(畔山美地嘉园);
+        3. 出餐单:老湖南土菜 12 分钟出餐(早到要干等) → 张女士(桃源居三区)。
         """
         self.log(actor, "生成演示场景:跨店单 + 充电宝单 + 出餐等待单,同时派发")
         orders = [
             self.create_order(
-                [("shop_fruit", ["果切拼盘", "蓝莓1盒"], 4.0), ("shop_cvs", ["冰镇可乐x2", "抽纸3包"], 2.0)],
+                [("shop_fruit", ["现烤牛角包x2", "冰美式"], 4.0), ("shop_cvs", ["冰镇可乐x2", "抽纸3包"], 2.0)],
                 "buyer_wang", 45.0, actor=actor,
             ),
             self.create_order([("shop_pb", SHOP_ITEMS["shop_pb"], 0.0)], "buyer_li", 25.0, actor=actor),
-            self.create_order([("shop_mlt", ["微辣麻辣烫套餐", "冰豆浆"], 12.0)], "buyer_zhang", 40.0, actor=actor),
+            self.create_order([("shop_mlt", ["剁椒鱼头饭", "冬瓜排骨汤"], 12.0)], "buyer_zhang", 40.0, actor=actor),
         ]
         return orders
 
@@ -422,6 +459,7 @@ class Store:
                     "shop_id": shop.id,
                     "shop_name": shop.name,
                     "category": shop.category,
+                    "address": shop.address,
                     "items": p.items,
                     "status": p.status,
                     "status_label": PICKUP_STATUS_LABEL[p.status],
@@ -440,6 +478,7 @@ class Store:
             "status": order.status,
             "status_label": ORDER_STATUS_LABEL[order.status],
             "buyer": {"id": buyer.id, "name": buyer.name, "address": buyer.address, "x": buyer.x, "y": buyer.y},
+            "buyer_hint": f"送达:{buyer.name},{buyer.address}",
             "delivery_fee": order.delivery_fee,
             "created_at": order.created_at.strftime("%H:%M:%S"),
             "deadline": "接单后计时" if pending else order.deadline.strftime("%H:%M:%S"),
