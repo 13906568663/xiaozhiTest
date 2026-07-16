@@ -427,11 +427,24 @@ class Store:
                 f"订单 {order.id} 有多个取货点,请指定 shop_id:"
                 + "、".join(f"{self.shops[p.shop_id].name}({p.shop_id})" for p in order.pickups)
             )
-        # 支持传店铺 id 或店名
+        # 支持传店铺 id 或店名(精确优先)
         for p in order.pickups:
             shop = self.shops[p.shop_id]
             if shop_id in (shop.id, shop.name):
                 return p, shop
+        # 模糊兜底:大模型转述店名常有错字/丢括号(如"畔山"写成"畈山"),
+        # 按去括号前缀 + 首段包含匹配,唯一命中才接受
+        def _core(name: str) -> str:
+            return name.split("(")[0].split("(")[0].strip()
+
+        want = _core(shop_id)
+        hits = [
+            (p, self.shops[p.shop_id])
+            for p in order.pickups
+            if want and (want in _core(self.shops[p.shop_id].name) or _core(self.shops[p.shop_id].name) in want)
+        ]
+        if len(hits) == 1:
+            return hits[0]
         raise OpError(f"订单 {order.id} 不包含店铺「{shop_id}」的取货任务")
 
     def _pickup_brief(self, order: Order) -> str:
