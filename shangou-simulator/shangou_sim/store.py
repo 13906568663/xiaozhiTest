@@ -71,6 +71,7 @@ class Buyer:
     y: float
     lng: float = 0.0  # 百度 BD09
     lat: float = 0.0
+    phone_tail: str = ""  # 收货人电话尾号(脱敏展示)
 
 
 @dataclass
@@ -101,11 +102,13 @@ class Order:
     rejected_at: datetime | None = None
     reject_reason: str = ""
     late: bool = False
+    platform: str = ""  # 平台单号标签,如 "淘宝闪购1"
+    note: str = ""      # 顾客备注,如 "放D305门口 / 依据餐量提供餐具"
 
 
 # 局部平面投影原点(区域西南角,BD09):所有真实点位投影到 0~5000m 平面,
 # 前端画布与距离计算沿用米制坐标,无需感知经纬度。
-_ORIGIN_LNG, _ORIGIN_LAT = 113.8650, 22.5800
+_ORIGIN_LNG, _ORIGIN_LAT = 119.9900, 30.2760
 
 
 def _bd09_to_xy(lng: float, lat: float) -> tuple[float, float]:
@@ -121,41 +124,33 @@ def _mk_shop(id_: str, name: str, category: str, lng: float, lat: float,
                 address=address, lng=lng, lat=lat)
 
 
-def _mk_buyer(id_: str, name: str, address: str, lng: float, lat: float) -> Buyer:
+def _mk_buyer(id_: str, name: str, address: str, lng: float, lat: float,
+              phone_tail: str = "") -> Buyer:
     x, y = _bd09_to_xy(lng, lat)
-    return Buyer(id_, name, address, x, y, lng=lng, lat=lat)
+    return Buyer(id_, name, address, x, y, lng=lng, lat=lat, phone_tail=phone_tail)
 
 
-# 真实店铺(深圳宝安西乡,坐标来自百度地点检索,店名可被 plan_route 直接搜到)
+# 真实店铺(杭州余杭仓前·梦想小镇一带,照淘宝闪购真实订单还原,
+# 坐标来自百度地点检索,店名可被 plan_route 直接搜到)
 SHOPS: list[Shop] = [
-    _mk_shop("shop_mlt", "老湖南·乡村土菜(桃源居店)", "餐饮",
-             113.873831, 22.611429, "前进二路与文卫路交叉口西侧·西乡园艺园工业园27栋", 8, 15),
-    _mk_shop("shop_slf", "开封羊汤馆(流塘店)", "餐饮",
-             113.891873, 22.582550, "西乡流塘·榕树路二巷2号", 8, 14),
-    _mk_shop("shop_fruit", "BL面包店(畔山美地嘉园)", "烘焙",
-             113.874817, 22.612231, "前进二路畔山美地嘉园", 3, 6),
-    _mk_shop("shop_cvs", "美宜佳(前进二路店)", "便利店",
-             113.886068, 22.599271, "前进二路凤凰岗第二工业区F栋一楼", 2, 4),
-    _mk_shop("shop_pb", "街电充电宝·桃源居三区柜机", "充电宝",
-             113.869330, 22.619571, "桃源居三区北门柜机", 0, 0),
+    _mk_shop("shop_clc", "敕勒川·砂锅牛腩牛杂煲(梦想小镇店)", "餐饮",
+             120.011687, 30.297968, "仓前街道良睦路1399号梦想小镇互联网村1号楼1楼", 0, 8),
+    _mk_shop("shop_jgb", "重庆鸡公煲(杭师大店)", "餐饮",
+             120.006234, 30.290800, "仓前街道时尚万通城1幢1-2室", 0, 10),
 ]
 
-# 真实小区/楼宇的固定顾客
+# 真实楼宇的固定顾客(照真实订单脱敏信息)
 BUYERS: list[Buyer] = [
-    _mk_buyer("buyer_zhang", "张女士", "桃源居三区(前进二路与汇江一路口)", 113.869330, 22.619571),
-    _mk_buyer("buyer_li", "李先生", "畔山美地嘉园(前进路130号)", 113.875623, 22.612054),
-    _mk_buyer("buyer_wang", "王同学", "河西创新公寓(前进二路137号)", 113.873017, 22.612124),
+    _mk_buyer("buyer_shao", "邵*(先生)", "正元智慧A栋(A幢13层)", 120.000244, 30.283826, phone_tail="6147"),
+    _mk_buyer("buyer_zhang", "张*丽", "杭州师范大学科技园D幢(D-305)", 119.994381, 30.281774, phone_tail="9985"),
 ]
 
-# 配送站:前进二路中段(骑手车辆日常活动位置)
-RIDER_HOME = _bd09_to_xy(113.8730, 22.6110)
+# 配送站:梦想小镇互联网村门口(对应真实订单里"离敕勒川 28 米")
+RIDER_HOME = _bd09_to_xy(120.0115, 30.2978)
 
 SHOP_ITEMS: dict[str, list[str]] = {
-    "shop_mlt": ["剁椒鱼头饭", "小炒黄牛肉套餐", "农家小炒肉", "冬瓜排骨汤"],
-    "shop_slf": ["羊肉汤配烧饼", "羊杂汤", "孜然羊肉炒饭"],
-    "shop_fruit": ["现烤牛角包x2", "提子软欧包", "芝士蛋糕切件", "冰美式"],
-    "shop_cvs": ["冰镇可乐x2", "抽纸3包", "5号电池1板", "关东煮套餐"],
-    "shop_pb": ["共享充电宝x1(柜机自取)"],
+    "shop_clc": ["砂锅牛腩煲", "砂锅牛杂煲", "秘制小菜", "米饭x2"],
+    "shop_jgb": ["重庆鸡公煲(中份)", "干锅花菜", "米饭x2", "王老吉"],
 }
 
 
@@ -216,6 +211,8 @@ class Store:
         buyer_id: str,
         deadline_minutes: float,
         actor: str = "系统",
+        platform: str = "",
+        note: str = "",
     ) -> Order:
         now = self.now()
         pickups: list[Pickup] = []
@@ -245,6 +242,8 @@ class Store:
             created_at=now,
             deadline=now + timedelta(minutes=deadline_minutes),
             window_minutes=float(deadline_minutes),
+            platform=platform,
+            note=note,
         )
         self.orders[order.id] = order
         shop_names = "、".join(self.shops[p.shop_id].name for p in pickups)
@@ -270,36 +269,32 @@ class Store:
 
     def create_random_order(self, actor: str = "系统") -> Order:
         buyer = random.choice(list(self.buyers.values()))
-        roll = random.random()
-        if roll < 0.2:
-            specs = [("shop_pb", SHOP_ITEMS["shop_pb"], 0.0)]
-            deadline = 25.0
-        elif roll < 0.4:
-            pair = random.sample([s.id for s in SHOPS if s.category != "充电宝"], 2)
-            specs = [(sid, random.sample(SHOP_ITEMS[sid], k=min(2, len(SHOP_ITEMS[sid]))), None) for sid in pair]
-            deadline = 45.0
-        else:
-            shop = random.choice([s for s in SHOPS if s.category != "充电宝"])
-            specs = [(shop.id, random.sample(SHOP_ITEMS[shop.id], k=min(2, len(SHOP_ITEMS[shop.id]))), None)]
-            deadline = 35.0
-        return self.create_order(specs, buyer.id, deadline, actor=actor)
+        shop = random.choice(list(self.shops.values()))
+        specs = [(shop.id, random.sample(SHOP_ITEMS[shop.id], k=min(2, len(SHOP_ITEMS[shop.id]))), None)]
+        return self.create_order(specs, buyer.id, 35.0, actor=actor)
 
     def create_preset_scenario(self, actor: str = "管理后台") -> list[Order]:
-        """客户电话里的验收场景:同一时刻三张单(全部真实地点)。
+        """演示场景:照淘宝闪购真实订单还原的两张单,生成后立即置为已接单。
 
-        1. 跨店单:BL面包店 + 美宜佳 两处取货 → 王同学(河西创新公寓);
-        2. 充电宝单:桃源居三区柜机即取不等待 → 李先生(畔山美地嘉园);
-        3. 出餐单:老湖南土菜 12 分钟出餐(早到要干等) → 张女士(桃源居三区)。
+        1. 淘宝闪购1:敕勒川砂锅(商户已出货) → 邵先生@正元智慧A栋,26 分钟时限;
+        2. 淘宝闪购7:重庆鸡公煲(商户已出货) → 张*丽@杭师大科技园D幢,37 分钟时限。
+        prep=0 即"商户已出货",骑手到店即取;演示无需再走接单环节。
         """
-        self.log(actor, "生成演示场景:跨店单 + 充电宝单 + 出餐等待单,同时派发")
+        self.log(actor, "生成演示场景:两张淘宝闪购订单(商户已出货),自动接单")
         orders = [
             self.create_order(
-                [("shop_fruit", ["现烤牛角包x2", "冰美式"], 4.0), ("shop_cvs", ["冰镇可乐x2", "抽纸3包"], 2.0)],
-                "buyer_wang", 45.0, actor=actor,
+                [("shop_clc", ["砂锅牛腩煲", "米饭x2"], 0.0)],
+                "buyer_shao", 26.0, actor=actor,
+                platform="淘宝闪购1", note="依据餐量提供餐具",
             ),
-            self.create_order([("shop_pb", SHOP_ITEMS["shop_pb"], 0.0)], "buyer_li", 25.0, actor=actor),
-            self.create_order([("shop_mlt", ["剁椒鱼头饭", "冬瓜排骨汤"], 12.0)], "buyer_zhang", 40.0, actor=actor),
+            self.create_order(
+                [("shop_jgb", ["重庆鸡公煲(中份)", "米饭x2"], 0.0)],
+                "buyer_zhang", 37.0, actor=actor,
+                platform="淘宝闪购7", note="放D305门口 / 依据餐量提供餐具",
+            ),
         ]
+        for o in orders:
+            self.accept(o.id, actor="系统(演示预接单)")
         return orders
 
     def autogen_tick(self) -> None:
@@ -478,6 +473,7 @@ class Store:
                     "status_label": PICKUP_STATUS_LABEL[p.status],
                     "ready_in_minutes": max(0.0, ready_in) if p.status != P_PICKED else 0.0,
                     "is_ready": ready_in <= 0,
+                    "merchant_status": "商户已出货" if ready_in <= 0 else f"商家备货中(还需{max(0.0, ready_in):.0f}分钟)",
                     "prep_minutes": p.prep_minutes,
                     "wait_minutes": p.wait_minutes,
                     "travel_from_rider_minutes": self.rider_travel_minutes_to(shop.x, shop.y),
@@ -485,13 +481,18 @@ class Store:
                     "y": shop.y,
                 }
             )
+        receiver = buyer.name + (f" 尾号{buyer.phone_tail}" if buyer.phone_tail else "")
         return {
             "id": order.id,
             "kind": order.kind,
+            "platform": order.platform,
             "status": order.status,
             "status_label": ORDER_STATUS_LABEL[order.status],
-            "buyer": {"id": buyer.id, "name": buyer.name, "address": buyer.address, "x": buyer.x, "y": buyer.y},
-            "buyer_hint": f"送达:{buyer.name},{buyer.address}",
+            "buyer": {"id": buyer.id, "name": buyer.name, "address": buyer.address,
+                      "phone_tail": buyer.phone_tail, "x": buyer.x, "y": buyer.y},
+            "receiver": receiver,
+            "buyer_hint": f"送达:{receiver},{buyer.address}",
+            "note": order.note,
             "delivery_fee": order.delivery_fee,
             "created_at": order.created_at.strftime("%H:%M:%S"),
             "deadline": "接单后计时" if pending else order.deadline.strftime("%H:%M:%S"),
