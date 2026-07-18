@@ -104,6 +104,7 @@ class Order:
     late: bool = False
     platform: str = ""  # 平台单号标签,如 "淘宝闪购1"
     note: str = ""      # 顾客备注,如 "放D305门口 / 依据餐量提供餐具"
+    demo_loop: bool = False  # 演示循环单:时限快耗尽时自动回满,永不超时
 
 
 # 局部平面投影原点(区域西南角,BD09):所有真实点位投影到 0~5000m 平面,
@@ -196,7 +197,20 @@ class Store:
         order = self.orders.get(order_id.strip())
         if order is None:
             raise OpError(f"找不到订单 {order_id},请先查询在途订单列表确认单号")
+        self._demo_refresh(order)
         return order
+
+    def _demo_refresh(self, order: Order) -> None:
+        """演示循环单:剩余时限低于窗口 30% 时自动回满,倒计时循环、永不超时。
+
+        只作用于 demo_loop 标记的在途单;倒计时仍真实下走,观众能看到
+        "剩 25 分 → 剩 24 分…",烧到低位悄悄续满,演示中不会出现超时单。
+        """
+        if not order.demo_loop or order.status not in (PENDING, ACCEPTED, DELIVERING):
+            return
+        left = self.clock.minutes_until(order.deadline)
+        if left < order.window_minutes * 0.3:
+            order.deadline = self.now() + timedelta(minutes=order.window_minutes)
 
     def rider_travel_minutes_to(self, x: float, y: float) -> float:
         return travel_minutes_between(self.rider["x"], self.rider["y"], x, y)
@@ -296,6 +310,7 @@ class Store:
             ),
         ]
         for o in orders:
+            o.demo_loop = True  # 演示单永不超时:时限烧到低位自动回满循环
             self.accept(o.id, actor="系统(演示预接单)")
         return orders
 
@@ -456,6 +471,7 @@ class Store:
     # ── 视图 ────────────────────────────────────────────
 
     def order_view(self, order: Order) -> dict[str, Any]:
+        self._demo_refresh(order)
         buyer = self.buyers[order.buyer_id]
         pending = order.status == PENDING
         # 待接单的订单永远保持"刚派单"状态:倒计时不走表,接单后才开始计时
