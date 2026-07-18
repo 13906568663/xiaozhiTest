@@ -175,12 +175,14 @@ class Store:
         self.orders: dict[str, Order] = {}
         self.events: list[dict[str, Any]] = []
         self._seq = 1000
-        self.rider = {"id": "rider_1", "name": "小郑", "x": RIDER_HOME[0], "y": RIDER_HOME[1], "location": "配送站"}
+        # 骑手名保持中性:上游语音端对骑手的称呼不固定(我/Jack/任意人名),
+        # 显示名不绑定具体人名,由 AI 跟随用户的称呼
+        self.rider = {"id": "rider_1", "name": "骑手", "x": RIDER_HOME[0], "y": RIDER_HOME[1], "location": "配送站"}
         self.autogen_enabled = False
         self.autogen_interval = 40.0  # 现实秒
         self._autogen_last = time.time()
         self.clock.set_scale(self.clock.scale)
-        self.log("系统", "数据已重置,骑手小郑在配送站待命")
+        self.log("系统", "数据已重置,骑手在配送站待命")
 
     def now(self) -> datetime:
         return self.clock.now()
