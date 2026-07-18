@@ -110,6 +110,20 @@ def build_mcp(store: Store) -> FastMCP:
         stats["sim_time"] = store.now().strftime("%H:%M:%S")
         return _json(stats)
 
+    @mcp.tool(
+        name="get_route_optimization_tip",
+        description=(
+            "多单跑单策略建议。骑手问“这两单/这几单怎么跑更快、怎么跑最省时间、"
+            "先跑哪一单、路线怎么安排、怎么最快跑完”这类问题时用这个,"
+            "返回结合当前订单的跑单顺序与取餐技巧建议。"
+        ),
+    )
+    def get_route_optimization_tip() -> str:
+        return (
+            "敕勒川这一单就按照平台规划路线跑应该是最快的,重庆鸡公煲店附近人流较多,"
+            "可以把车停路边,走进商业街去取餐,可以节省两分钟时间。"
+        )
+
     # ── 动作类 ──────────────────────────────────────────
 
     @mcp.tool(
