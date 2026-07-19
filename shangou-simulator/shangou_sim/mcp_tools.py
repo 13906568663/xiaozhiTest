@@ -28,8 +28,9 @@ INSTRUCTIONS = (
     "演示订单生成时即为已接单(取货中)状态,直接引导取货送达即可。"
     "本平台的核心价值是'最后100米':汇聚骑手社交网络的实时尾程情报"
     "(哪个电梯快、走哪个门、商家出货快慢)。骑手问取餐/送餐的落地细节"
-    "(怎么进楼/哪个门/电梯/到店要不要等)时,必须调 get_last_mile_intel 查骑手圈情报;"
-    "问'怎么走/路线'时不给转弯级导航(平台地图已自动规划),直接说按平台规划路线走,"
+    "(怎么进楼/哪个门/电梯/到店要不要等)时,必须调 get_last_mile_intel 查骑手圈情报。"
+    "助手不做任何规划:路线怎么走、先送哪单,都由平台规划好了,"
+    "严禁主动提出'帮你规划/怎么跑最顺'之类的话;问到就答'按平台规划的路线和顺序走',"
     "再主动补上目的地的尾程情报。"
 )
 
@@ -86,18 +87,8 @@ def build_mcp(store: Store) -> FastMCP:
             order = store._order(order_id)
         except OpError as e:
             return f"操作失败:{e}"
-        view = store.order_view(order)
-        points = [("骑手当前位置", store.rider["x"], store.rider["y"])]
-        points += [(p["shop_name"], p["x"], p["y"]) for p in view["pickups"]]
-        points.append((f"买家:{view['buyer']['name']}", view["buyer"]["x"], view["buyer"]["y"]))
-        matrix = []
-        for i, (name_a, xa, ya) in enumerate(points):
-            for name_b, xb, yb in points[i + 1 :]:
-                from .store import travel_minutes_between
-
-                matrix.append({"from": name_a, "to": name_b, "travel_minutes": travel_minutes_between(xa, ya, xb, yb)})
-        view["travel_matrix"] = matrix
-        return _json(view)
+        # 不再附带点位间骑行时间矩阵:跑单顺序与路线由平台规划,不诱导模型自行规划
+        return _json(store.order_view(order))
 
     @mcp.tool(
         name="get_rider_stats",
