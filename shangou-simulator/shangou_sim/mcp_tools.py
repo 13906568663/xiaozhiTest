@@ -27,8 +27,11 @@ INSTRUCTIONS = (
     "本服务不提供接单/拒单/状态上报操作:那些在骑手 App 上完成,"
     "用户说'帮我接单/我取到了'时,告知在配送 App 上操作即可,不要试图代办。"
     "本平台的核心价值是'最后100米':汇聚骑手社交网络的实时尾程情报"
-    "(哪个电梯快、走哪个门、商家出货快慢)。骑手问取餐/送餐的落地细节"
-    "(怎么进楼/哪个门/电梯/到店要不要等)时,必须调 get_last_mile_intel 查骑手圈情报。"
+    "(哪个电梯快、走哪个门、商家出货快慢)。订单数据里已自动附带"
+    " rider_circle_intel 字段(该取餐点/送餐点的骑手圈情报),"
+    "报订单状态时必须把这个字段的内容顺口播报给骑手,严禁漏掉;"
+    "订单数据没覆盖的地点,骑手问落地细节(怎么进楼/哪个门/电梯/要不要等)时"
+    "再调 get_last_mile_intel 查。"
     "助手不做任何规划:路线怎么走、先送哪单,都由平台规划好了。"
     "严禁主动提出'帮你规划/怎么跑最顺';即使骑手明确要求帮忙规划,"
     "也绝不给'先去A再去B最后C'式的顺序,只回答'平台已经规划好了,按平台的路线和顺序走',"
@@ -38,6 +41,54 @@ INSTRUCTIONS = (
 
 def _json(payload: object) -> str:
     return json.dumps(payload, ensure_ascii=False)
+
+
+# ── 最后100米:骑手社交平台众包尾程情报(演示写死) ──
+
+_LAST_MILE_INTEL: list[tuple[tuple[str, ...], str]] = [
+    (
+        ("正元", "智慧", "A栋", "A幢", "邵"),
+        "骑手圈最新反馈:正元智慧A栋这个时间段主电梯会等比较久喔,"
+        "可以绕到大门左边的货梯上去,可能会更快一点喔。",
+    ),
+    (
+        ("科技园", "杭师大", "D幢", "D栋", "D305", "张"),
+        "骑手圈最新反馈:杭师大科技园东门是员工通道,电动车不让进;"
+        "北门是货运入口,你可以从那边进来。",
+    ),
+    (
+        ("蜜雪", "冰城", "仓兴", "柠檬水", "奶茶"),
+        "骑手圈最新反馈:蜜雪冰城这家店今天订单好像很多,"
+        "有骑手反馈半个小时都还没取到货。",
+    ),
+]
+
+
+def _match_intel(*texts: str) -> str | None:
+    blob = " ".join(t for t in texts if t)
+    if not blob:
+        return None
+    for keys, text in _LAST_MILE_INTEL:
+        if any(k in blob for k in keys):
+            return text
+    return None
+
+
+def _attach_intel(view: dict) -> dict:
+    """给订单视图挂骑手圈尾程情报:取货点按店名/地址匹配,送达点按收货人/地址匹配。
+
+    情报直接随订单数据返回,模型一次调用就能拿到,不依赖它记得再调
+    get_last_mile_intel;没有情报的点位不加字段(避免模型念'暂无反馈')。
+    """
+    for p in view.get("pickups", []):
+        tip = _match_intel(p.get("shop_name", ""), p.get("address", ""))
+        if tip:
+            p["rider_circle_intel"] = tip
+    buyer = view.get("buyer") or {}
+    tip = _match_intel(buyer.get("name", ""), buyer.get("address", ""))
+    if tip:
+        view["rider_circle_intel"] = tip + "(送达点情报)"
+    return view
 
 
 def build_mcp(store: Store) -> FastMCP:
@@ -63,22 +114,26 @@ def build_mcp(store: Store) -> FastMCP:
         include_finished: Annotated[bool, Field(description="是否连已送达/已拒单的历史单一起返回,默认否")] = False,
     ) -> str:
         orders = list(store.orders.values()) if include_finished else store.active_orders()
-        views = [store.order_view(o) for o in sorted(orders, key=lambda o: o.id)]
+        views = [_attach_intel(store.order_view(o)) for o in sorted(orders, key=lambda o: o.id)]
         return _json(
             {
                 "sim_time": store.now().strftime("%H:%M:%S"),
                 "rider_location": store.rider["location"],
                 "order_count": len(views),
                 "orders": views,
-                "hint": "ready_in_minutes=0 表示商品已备好可直接取;早到未备好会干等。待接单订单的倒计时从接单时刻才开始算,不会超时。",
+                "hint": (
+                    "ready_in_minutes=0 表示商品已备好可直接取;早到未备好会干等。"
+                    "rider_circle_intel 是骑手社交平台的众包尾程情报,回答时必须顺口播报给骑手,不要漏。"
+                ),
             }
         )
 
     @mcp.tool(
         name="get_order_detail",
         description=(
-            "查看单个订单的完整信息:取货点备货状态、收货人/备注、送达时限等。"
-            "道路怎么走不用管(平台地图已规划);落地细节(电梯/门禁/出货快慢)请另调 get_last_mile_intel。"
+            "查看单个订单的完整信息:取货点备货状态、收货人/备注、送达时限,"
+            "并自动附带取送点的骑手圈尾程情报(rider_circle_intel,必须播报)。"
+            "道路怎么走不用管(平台地图已规划)。"
         ),
     )
     def get_order_detail(
@@ -88,28 +143,10 @@ def build_mcp(store: Store) -> FastMCP:
             order = store._order(order_id)
         except OpError as e:
             return f"操作失败:{e}"
-        # 不再附带点位间骑行时间矩阵:跑单顺序与路线由平台规划,不诱导模型自行规划
-        return _json(store.order_view(order))
-
-    # ── 最后100米:骑手社交平台众包尾程情报(演示写死) ──
-
-    _LAST_MILE_INTEL: list[tuple[tuple[str, ...], str]] = [
-        (
-            ("正元", "智慧", "A栋", "A幢", "邵"),
-            "骑手圈最新反馈:正元智慧A栋这个时间段主电梯会等比较久喔,"
-            "可以绕到大门左边的货梯上去,可能会更快一点喔。",
-        ),
-        (
-            ("科技园", "杭师大", "D幢", "D栋", "D305", "张"),
-            "骑手圈最新反馈:杭师大科技园东门是员工通道,电动车不让进;"
-            "北门是货运入口,你可以从那边进来。",
-        ),
-        (
-            ("蜜雪", "冰城", "仓兴", "柠檬水", "奶茶"),
-            "骑手圈最新反馈:蜜雪冰城这家店今天订单好像很多,"
-            "有骑手反馈半个小时都还没取到货。",
-        ),
-    ]
+        view = _attach_intel(store.order_view(order))
+        view["hint"] = "rider_circle_intel 是骑手圈众包尾程情报,回答时必须顺口播报给骑手。"
+        # 不附带点位间骑行时间矩阵:跑单顺序与路线由平台规划,不诱导模型自行规划
+        return _json(view)
 
     @mcp.tool(
         name="get_last_mile_intel",
