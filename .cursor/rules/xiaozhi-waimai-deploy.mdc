@@ -26,14 +26,16 @@ alwaysApply: true
     -e DISPATCH_API_URL=http://186.244.238.6:18100 \
     -p 18209:18209 -p 18808:18808 -v wmdt_data:/app/data wmdt:latest
   ```
-- 轨迹页(18209)已融合演示视图:骑手 SVG 图标、派单订单图层(店/客标记+侧栏卡片,浏览器直连 18100 拉取,CORS 已放开)、摔车/急刹红点上图。**不画道路规划连线**(道路交给闪购/美团,我们不做)。地图默认中心杭州仓前。派单管理台(18100)仅作导演控制台。
+- 轨迹页(18209)已融合演示视图:骑手 SVG 图标、派单订单图层(店/客标记+侧栏卡片,浏览器直连 18100 拉取,CORS 已放开)、摔车(红)/超速(橙)事件点上图。**不画道路规划连线**(道路交给闪购/美团,我们不做)。地图默认中心杭州仓前。派单管理台(18100)仅作导演控制台(订单状态推进只能在这里点,语音侧已只读)。
+- **事件只暴露摔车+超速**(2026-07-19 起):急刹/颠簸/长停驻仍入库积累但 `storage.list_events` 白名单过滤,页面与 MCP 都看不到。超速规则:连续 3 包 ≥ `TRACKER_SPEED_LIMIT_KMH`(默认 25)开事件,回落到限速-3 以下闭合,事件带 max_kmh/limit_kmh。
 - **演示场景(2026-07-19 起,杭州仓前)**:「演示场景」= 照淘宝闪购真实订单还原的 3 张单,**生成即已接单(取货中)**:敕勒川砂锅(梦想小镇,商户已出货)→邵先生@正元智慧A栋(26分钟);重庆鸡公煲(时尚万通城,已出货)→张*丽@杭师大科技园D幢(37分钟);**蜜雪冰城·仓兴店(仓兴街101号,未出餐 prep=12)**→王女士@天使村10栋(32分钟)。订单带 platform/receiver(电话尾号)/note(顾客备注)字段,MCP 可查。蜜雪冰城在骑手到店前备货倒计时自动循环回满(稳定演示"还没出餐"),到店后正常走完可取到。容器重启后订单清空,要在 18100 按「一键生成演示场景」或 `POST /api/orders/preset` 重新生成。用户多设备轮换测试,**不锁定设备**。
 - **产品亮点=最后100米**(非道路导航):`shangou-dispatch` 工具 `get_last_mile_intel` 返回骑手社交平台众包尾程情报(演示写死):
   - 送正元智慧A栋 → 主电梯这时间段等很久,绕大门左边货梯更快
   - 送杭师大科技园D幢 → 东门员工通道电动车不进,走北门货运入口
   - 取蜜雪冰城 → 今天单多,有骑手反馈半小时还没取到货(该店演示中恒为"备货中")
   道路怎么走一律答「按平台规划路线」;AI 应主动补尾程情报。**AI 不做任何规划**:严禁"我来帮你规划/怎么跑最顺",用户点名要规划也只答"平台已规划好,按平台顺序走"+尾程情报(机器人 system_prompt 与派单 MCP INSTRUCTIONS 双层约束,get_order_detail 已去掉点位骑行时间矩阵)。`plan_route` / `get_route_optimization_tip` 已下线。
-- `mcp_server.py` = 独立 MCP 聚合查询服务(工具 `list_vehicles`/`get_vehicle_location`/`get_track_summary`/`list_vehicle_events`/`get_fleet_overview`/`find_nearby`),容器 `wmdt-mcp`(端口 18210,镜像同 `wmdt:latest`)。**无路线规划工具**。
+- **语音侧能力已收敛为只读(2026-07-19)**:派单 MCP 只剩 `list_orders`/`get_order_detail`/`get_last_mile_intel`(接单/拒单/状态推进/跑单统计已从 MCP 下线,REST 与 18100 管理台仍在);轨迹 MCP 只剩 `list_vehicles`/`get_vehicle_location`/`get_track_summary`/`list_vehicle_events`(车队总览/周边搜索已下线)。
+- `mcp_server.py` = 独立 MCP 聚合查询服务,容器 `wmdt-mcp`(端口 18210,镜像同 `wmdt:latest`)。**无路线规划/周边搜索工具**。
 - `wmdt-mcp` 挂在 `agent-flow_default` 网络(供 api 按容器名 `http://wmdt-mcp:18210/mcp` 调用),经**宿主网关**回访两个实例的已发布端口:
   ```
   docker run -d --name wmdt-mcp --restart unless-stopped \
@@ -41,11 +43,10 @@ alwaysApply: true
     -e TRACKER_JT808_API=http://172.19.0.1:18209 \
     -e TRACKER_MQTT_API=http://172.19.0.1:18309 \
     -e BAIDU_SERVER_AK=P2meGoQErXsOC2KOFx2EPtWbyGXmkl7W \
-    -e BAIDU_REGION=杭州 \
     -p 18210:18210 wmdt:latest python mcp_server.py
   ```
   `172.19.0.1` = `agent-flow_default` 网关(变了用 `docker network inspect agent-flow_default` 查,或改用 `host.docker.internal`)。
-- 设备选择:`TRACKER_FIXED_DEVICE` 已弃用(2026-07-18)——`device_id` 缺省时自动选**当前活跃(在线且最近上报)设备**,多台设备轮换测试无需改配置,AI 不会反问选哪台。`BAIDU_SERVER_AK`/`BAIDU_REGION` 控制逆地理(门牌级)和 POI 检索城市。
+- 设备选择:`TRACKER_FIXED_DEVICE` 已弃用(2026-07-18)——`device_id` 缺省时自动选**当前活跃(在线且最近上报)设备**,多台设备轮换测试无需改配置,AI 不会反问选哪台。`BAIDU_SERVER_AK` 控制逆地理(门牌级);POI 检索已随周边搜索下线。
 
 ## 红线(避免重蹈覆辙)
 - **绝不**对 `wmdt`/`wmdt-mqtt` 执行 `docker network connect` 挂第二个网络:会让外部访问 18209/18309 端口转发指向非默认路由网卡的 IP,形成不对称路由,浏览器打不开(本机 hairpin 却正常,极难察觉)。要跨容器访问就走宿主网关端口,别共享网络。

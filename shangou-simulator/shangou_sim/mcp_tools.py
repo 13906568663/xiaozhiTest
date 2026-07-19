@@ -1,5 +1,6 @@
-"""MCP 工具层:把派单系统的骑手动作暴露给 AI 助手(streamable-http)。
+"""MCP 工具层:把派单系统的订单信息与尾程情报暴露给 AI 助手(streamable-http)。
 
+只读服务:接单/到店/取货/送达等操作在骑手 App 上完成,不经语音助手。
 所有工具返回 ensure_ascii=False 的 JSON 文本或中文说明,方便大模型直接口播。
 """
 
@@ -14,18 +15,17 @@ from pydantic import Field
 
 from .store import OpError, Store
 
-ACTOR = "AI骑手助手"
-
 INSTRUCTIONS = (
-    "闪购外卖派单系统(骑手端)。当前只有一名骑手:所有订单都是这名骑手的,"
+    "闪购外卖派单系统(骑手端,只读)。当前只有一名骑手:所有订单都是这名骑手的,"
     "用户提到的任何称呼或人名(我/骑手/Jack/小郑等)都指他,查询订单一律直接查,"
     "不需要也无法按人名筛选,严禁反问'谁的订单'。"
     "订单可能包含多个取货点(跨店单),每个取货点有备货就绪倒计时 ready_in_minutes:"
     "0 表示商户已出货、到店即取,大于 0 表示商家还在备货、骑手早到会干等。"
     "订单带平台标签(platform,如'淘宝闪购1')、收货人(receiver,含电话尾号)和"
     "顾客备注(note,如'放D305门口'),用户问收货人/备注/商家出货情况都能答。"
-    "店铺和顾客都是杭州余杭仓前(梦想小镇/杭师大一带)的真实地点(订单里带真实地址);"
-    "演示订单生成时即为已接单(取货中)状态,直接引导取货送达即可。"
+    "店铺和顾客都是杭州余杭仓前(梦想小镇/杭师大一带)的真实地点(订单里带真实地址)。"
+    "本服务不提供接单/拒单/状态上报操作:那些在骑手 App 上完成,"
+    "用户说'帮我接单/我取到了'时,告知在配送 App 上操作即可,不要试图代办。"
     "本平台的核心价值是'最后100米':汇聚骑手社交网络的实时尾程情报"
     "(哪个电梯快、走哪个门、商家出货快慢)。骑手问取餐/送餐的落地细节"
     "(怎么进楼/哪个门/电梯/到店要不要等)时,必须调 get_last_mile_intel 查骑手圈情报。"
@@ -91,17 +91,6 @@ def build_mcp(store: Store) -> FastMCP:
         # 不再附带点位间骑行时间矩阵:跑单顺序与路线由平台规划,不诱导模型自行规划
         return _json(store.order_view(order))
 
-    @mcp.tool(
-        name="get_rider_stats",
-        description="查询骑手今日跑单统计:已送达单量、收入、超时单数、累计干等分钟数、在途单数。骑手问“今天跑了多少/赚了多少”用这个。",
-    )
-    def get_rider_stats() -> str:
-        stats = store.stats()
-        stats["rider_name"] = store.rider["name"]
-        stats["rider_location"] = store.rider["location"]
-        stats["sim_time"] = store.now().strftime("%H:%M:%S")
-        return _json(stats)
-
     # ── 最后100米:骑手社交平台众包尾程情报(演示写死) ──
 
     _LAST_MILE_INTEL: list[tuple[tuple[str, ...], str]] = [
@@ -143,58 +132,7 @@ def build_mcp(store: Store) -> FastMCP:
                 return text
         return f"骑手圈暂时没有关于「{place}」的最新尾程反馈,按现场实际情况处理即可。"
 
-    # ── 动作类 ──────────────────────────────────────────
-
-    @mcp.tool(
-        name="accept_order",
-        description="接下一张待接单的订单。接单后返回各取货点的备货情况;落地细节请再调 get_last_mile_intel。",
-    )
-    def accept_order(
-        order_id: Annotated[str, Field(description="订单号,如 SG1001")],
-    ) -> str:
-        try:
-            return store.accept(order_id, actor=ACTOR)
-        except OpError as e:
-            return f"操作失败:{e}"
-
-    @mcp.tool(
-        name="reject_order",
-        description="拒绝一张待接单的订单(骑手明确说不接的时候才用)。",
-    )
-    def reject_order(
-        order_id: Annotated[str, Field(description="订单号,如 SG1001")],
-        reason: Annotated[str, Field(description="拒单原因,口语原话即可,可为空")] = "",
-    ) -> str:
-        try:
-            return store.reject(order_id, reason, actor=ACTOR)
-        except OpError as e:
-            return f"操作失败:{e}"
-
-    @mcp.tool(
-        name="update_order_status",
-        description=(
-            "上报骑手动作,推进订单状态。action 取值:"
-            "arrive_shop=到店(早到会提示还要等几分钟);"
-            "pick_up=取货(商家没备好时不会取成功,会返回还需等待的分钟数);"
-            "deliver=送达买家(必须所有取货点都取完)。"
-            "跨店单做 arrive_shop/pick_up 时必须带 shop_id(店铺 id 或店名)。"
-        ),
-    )
-    def update_order_status(
-        order_id: Annotated[str, Field(description="订单号,如 SG1001")],
-        action: Annotated[str, Field(description="动作:arrive_shop / pick_up / deliver")],
-        shop_id: Annotated[str, Field(description="取货店铺的 id 或店名;订单只剩一个未取点时可省略")] = "",
-    ) -> str:
-        try:
-            act = action.strip().lower()
-            if act == "arrive_shop":
-                return store.arrive_shop(order_id, shop_id, actor=ACTOR)
-            if act == "pick_up":
-                return store.pick_up(order_id, shop_id, actor=ACTOR)
-            if act == "deliver":
-                return store.deliver(order_id, actor=ACTOR)
-            return f"操作失败:未知动作「{action}」,只支持 arrive_shop / pick_up / deliver"
-        except OpError as e:
-            return f"操作失败:{e}"
+    # 订单操作(接单/到店/取货/送达)不暴露给语音助手:骑手在配送 App 上
+    # 自行操作,导演可用 18100 管理台推进状态;语音侧只读 + 尾程情报。
 
     return mcp
