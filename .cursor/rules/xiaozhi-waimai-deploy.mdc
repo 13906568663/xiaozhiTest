@@ -1,0 +1,52 @@
+---
+description: 小智语音接入 + 外卖车辆MCP 的服务器部署拓扑与运维约定(换会话必读)
+alwaysApply: true
+---
+
+# 小智语音 × 外卖车辆MCP 部署 Runbook
+
+## 服务器
+- SSH 走 MCP `user-ssh-xiaozhi`(主机 `ser808160840066`,公网 `186.244.238.6`)。
+- 改代码一律走 **git**,不要用 base64 分块传文件(易损坏、极慢)。
+
+## agent-flow(主平台,`/opt/agent-flow`)
+- compose:`deploy/docker-compose.xiaozhi.yml`;容器 `agent-flow-api-1`(8000)/`agent-flow-db-1`(pg)/`agent-flow-web-1`(8080)。
+- **主 MCP 出站接入点** = `XIAOZHI_MCP_ENDPOINT`(在 `/opt/agent-flow/.env.prod`,本地 `.env` 同步)。平台主动拨 WebSocket 到小智,暴露 `ask_assistant`/`submit_task`/`query_task` 元工具。
+- 换 token / 改配置后重建 api:
+  `cd /opt/agent-flow && docker compose -f deploy/docker-compose.xiaozhi.yml --project-directory . up -d --force-recreate api`
+- 绑定机器人「语音助手」`id=23e7dd75-c1df-4481-9736-599b5bce86a1`(库 `agent_flow`.`chatbot`),`mcp_bindings` 含 `shangou-dispatch` + `waimai-tracker`;能力在 `capability_registry` 表。
+- 联网工具 `web-tools`(容器 `tools-mcp`:3003,web_search/get_news/query_city_weather/read_webpage)**已于 2026-07-16 下线**:ddgs 搜索一次 2-4 秒,多轮必超 20 秒同步预算导致降级+用户重问。要恢复:`docker start tools-mcp` + 能力表 `web-tools` 置 active + 机器人 mcp_bindings 加回。
+
+## 外卖平台(`github.com/13906568663/wmdt.git`,`/opt/wmdt`)
+- 两个采集实例,**只挂 bridge 单网络**:`wmdt`(JT808,web 18209 / TCP 18808)、`wmdt-mqtt`(MQTT,web 18309 / TCP 18883)。`data/` 已 gitignore,`git pull` 不动实时数据。
+- `wmdt` 启动命令(18209 演示主屏,含订单图层;重启会断车机连接、固件自动重连):
+  ```
+  docker run -d --name wmdt --restart unless-stopped \
+    -e TRACKER_ENABLE_MQTT=0 \
+    -e DISPATCH_API_URL=http://186.244.238.6:18100 \
+    -p 18209:18209 -p 18808:18808 -v wmdt_data:/app/data wmdt:latest
+  ```
+- 轨迹页(18209)已融合演示视图:骑手 SVG 图标、派单订单图层(店/客标记+侧栏卡片,浏览器直连 18100 拉取,CORS 已放开)、摔车/急刹红点上图。**不画道路规划连线**(道路交给闪购/美团,我们不做)。地图默认中心杭州仓前。派单管理台(18100)仅作导演控制台。
+- **演示场景(2026-07-18 起,杭州仓前)**:「演示场景」= 照淘宝闪购真实订单还原的 2 张单,**生成即已接单(取货中)**:敕勒川砂锅(梦想小镇,商户已出货)→邵先生@正元智慧A栋(26分钟);重庆鸡公煲(时尚万通城)→张*丽@杭师大科技园D幢(37分钟)。订单带 platform/receiver(电话尾号)/note(顾客备注)字段,MCP 可查。用户多设备轮换测试,**不锁定设备**。
+- **产品亮点=最后100米**(非道路导航):`shangou-dispatch` 工具 `get_last_mile_intel` 返回骑手社交平台众包尾程情报(演示写死):
+  - 送正元智慧A栋 → 主电梯这时间段等很久,绕大门左边货梯更快
+  - 送杭师大科技园D幢 → 东门员工通道电动车不进,走北门货运入口
+  - 取敕勒川 → 今天单多,有骑手反馈半小时还没取到货
+  道路怎么走一律答「按平台规划路线」;AI 应主动补尾程情报。`plan_route` / `get_route_optimization_tip` 已下线。
+- `mcp_server.py` = 独立 MCP 聚合查询服务(工具 `list_vehicles`/`get_vehicle_location`/`get_track_summary`/`list_vehicle_events`/`get_fleet_overview`/`find_nearby`),容器 `wmdt-mcp`(端口 18210,镜像同 `wmdt:latest`)。**无路线规划工具**。
+- `wmdt-mcp` 挂在 `agent-flow_default` 网络(供 api 按容器名 `http://wmdt-mcp:18210/mcp` 调用),经**宿主网关**回访两个实例的已发布端口:
+  ```
+  docker run -d --name wmdt-mcp --restart unless-stopped \
+    --network agent-flow_default --add-host host.docker.internal:host-gateway \
+    -e TRACKER_JT808_API=http://172.19.0.1:18209 \
+    -e TRACKER_MQTT_API=http://172.19.0.1:18309 \
+    -e BAIDU_SERVER_AK=P2meGoQErXsOC2KOFx2EPtWbyGXmkl7W \
+    -e BAIDU_REGION=杭州 \
+    -p 18210:18210 wmdt:latest python mcp_server.py
+  ```
+  `172.19.0.1` = `agent-flow_default` 网关(变了用 `docker network inspect agent-flow_default` 查,或改用 `host.docker.internal`)。
+- 设备选择:`TRACKER_FIXED_DEVICE` 已弃用(2026-07-18)——`device_id` 缺省时自动选**当前活跃(在线且最近上报)设备**,多台设备轮换测试无需改配置,AI 不会反问选哪台。`BAIDU_SERVER_AK`/`BAIDU_REGION` 控制逆地理(门牌级)和 POI 检索城市。
+
+## 红线(避免重蹈覆辙)
+- **绝不**对 `wmdt`/`wmdt-mqtt` 执行 `docker network connect` 挂第二个网络:会让外部访问 18209/18309 端口转发指向非默认路由网卡的 IP,形成不对称路由,浏览器打不开(本机 hairpin 却正常,极难察觉)。要跨容器访问就走宿主网关端口,别共享网络。
+- 判断此类故障:本机 `curl 127.0.0.1:18209` 正常但外部 404/超时 → 查 `iptables -t nat -S | grep 'dport 18209 -j DNAT'`,DNAT 目标应是 bridge 网段(`172.17.x`)且容器仅在 bridge 网络。
