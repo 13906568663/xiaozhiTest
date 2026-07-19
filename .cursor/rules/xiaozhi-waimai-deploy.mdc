@@ -32,7 +32,7 @@ alwaysApply: true
   - 送正元智慧A栋 → 主电梯这时间段等很久,绕大门左边货梯更快
   - 送杭师大科技园D幢 → 东门员工通道电动车不进,走北门货运入口
   - 取蜜雪冰城 → 今天单多,有骑手反馈半小时还没取到货(该店演示中恒为"备货中")
-  道路怎么走一律答「按平台规划路线」;AI 应主动补尾程情报。`plan_route` / `get_route_optimization_tip` 已下线。
+  道路怎么走一律答「按平台规划路线」;AI 应主动补尾程情报。**AI 不做任何规划**:严禁"我来帮你规划/怎么跑最顺",用户点名要规划也只答"平台已规划好,按平台顺序走"+尾程情报(机器人 system_prompt 与派单 MCP INSTRUCTIONS 双层约束,get_order_detail 已去掉点位骑行时间矩阵)。`plan_route` / `get_route_optimization_tip` 已下线。
 - `mcp_server.py` = 独立 MCP 聚合查询服务(工具 `list_vehicles`/`get_vehicle_location`/`get_track_summary`/`list_vehicle_events`/`get_fleet_overview`/`find_nearby`),容器 `wmdt-mcp`(端口 18210,镜像同 `wmdt:latest`)。**无路线规划工具**。
 - `wmdt-mcp` 挂在 `agent-flow_default` 网络(供 api 按容器名 `http://wmdt-mcp:18210/mcp` 调用),经**宿主网关**回访两个实例的已发布端口:
   ```
